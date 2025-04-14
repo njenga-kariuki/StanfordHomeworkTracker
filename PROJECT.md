@@ -1,0 +1,84 @@
+# Project Requirements: Stanford GSB Homework Tracker (V1)
+
+## 1. Overall Goal:
+To create a web application that automates the process of tracking Stanford GSB homework assignments and readings by scraping Canvas, processing the information, and providing summarization tools for study materials.
+
+## 2. Target User:
+Stanford GSB Students.
+
+## 3. Core Features (V1):
+* Secure Canvas Login & Session Management.
+* Automated Homework/Reading Extraction from specified Canvas courses.
+* LLM-powered processing of extracted Canvas content for clarity.
+* Aggregated Weekly To-Do List display.
+* PDF Upload and Summarization using Gemini Pro.
+* Automated Google Doc creation for summaries via Zapier MCP.
+
+## 4. Technical Stack & Key Components:
+*   **Frontend:** Modern Web Design (Agent to choose appropriate framework like React, Vue, etc., or use HTML/CSS/JS if simpler). Single-page application structure with distinct sections for different functionalities.
+*   **Backend/Orchestration:**
+    *   **Model Context Protocol (MCP):** Use MCP-compatible servers/tools for orchestration.
+    *   **Puppeteer Server (MCP):** One dedicated MCP server running Puppeteer for browser automation tasks (Canvas login, navigation, scraping).
+    *   **Zapier MCP Tool (Google Drive):** User will configure a Zapier MCP Tool for Google Drive interaction (specifically, creating Google Docs). The application will trigger this tool.
+    *   **LLM APIs:**
+        *   Claude 3.7 (via API call, potentially through an MCP tool if available/convenient) for processing scraped Canvas content.
+        *   Gemini 2.5 Pro (via API call) for PDF summarization.
+    *   **Data Persistence:** Server-side database (Agent to choose a simple, suitable DB like SQLite, or a cloud equivalent if appropriate for the deployment environment) to store aggregated homework data and maintain user sessions.
+    *   **Credential Storage:** Secure environment variables for Canvas username, Canvas password, and any necessary API keys (LLMs, potentially Zapier trigger URLs/keys). Crucially, these must never be exposed in frontend code or logs.
+
+## 5. Detailed Functional Requirements:
+
+### 5.1. User Authentication & Session Management:
+*   **Input:** User provides Canvas credentials (username, password) via secure environment variables during application setup.
+*   **Process:**
+    *   The Puppeteer server will use the stored credentials to log into Canvas.
+    *   **Target URL:** `https://canvas-gateway.stanford.edu/goCanvas.html`
+    *   **Login Flow:** The script must handle the standard username/password fields *and* any subsequent Stanford Single Sign-On (SSO) redirects or steps required to reach the Canvas dashboard. *Agent Note: Stanford SSO might involve multiple redirects or interactions; the Puppeteer script must navigate the full flow.*
+    *   User sessions should persist between browser visits using the server-side database.
+*   **Error Handling:** If login fails (wrong credentials, SSO issue, unexpected page change), display a clear error message to the user, suggesting they check their credentials or potentially re-trigger the login manually after resolving any external issues (like an SSO prompt).
+
+### 5.2. Canvas Interaction & Homework Scraping:
+*   **Input:** User provides a list of their exact Canvas course names via an input field(s) on the webpage.
+*   **Process (Triggered on page load and manual refresh):**
+    1.  Ensure the user is logged into Canvas (initiate login via Puppeteer if needed).
+    2.  Navigate to the main Canvas dashboard/course list.
+    3.  For each course name provided by the user:
+        *   Find the "Courses" link/menu (typically left-side navigation).
+        *   Click the specific course link matching the user's input.
+        *   Once on the course page, navigate to "Modules" and/or "Assignments" (usually left-side navigation).
+        *   **Within Modules:** Scan for sections. Identify relevant sections based on dates falling within the **next 7 days**. *Agent Note: Date formats may vary; implement robust date parsing.*
+        *   **Within Assignments Tab (if applicable):** Look for assignments due within the **next 7 days**.
+        *   **Content Extraction:** For relevant items found in Modules/Assignments:
+            *   If it's text/page content: Extract the text description.
+            *   If it's a link (especially to PDFs or external resources): Extract the link URL and any associated text/title. *Note: Direct download of files is NOT required for this step, just capturing the information/link.*
+    4.  **Content Processing (Per Class):**
+        *   Gather all extracted raw text, links, and context (course name, associated date) for a single class.
+        *   Send this collection of information to **Claude 3.7** with a prompt designed to: "Organize this raw Canvas information (assignments, readings, links for [Course Name] around [Date/Week]) into a clear, concise summary of tasks and materials for the student."
+        *   Store the structured output from Claude (associated with the course and relevant date).
+*   **Output:** Structured homework/reading information (processed by Claude) for each class, covering the next 7 days.
+*   **Error Handling:** If scraping fails for a specific class (e.g., structure mismatch, page not found), notify the user that information for that class could not be retrieved, but continue processing other classes.
+
+### 5.3. Homework Aggregation & Display:
+*   **Input:** Structured homework data retrieved and processed in step 5.2.
+*   **Process:** Aggregate the processed data from all classes.
+*   **Display:** Present the aggregated list on the webpage.
+    *   **Grouping:** Primary grouping by **Date**. Secondary grouping by **Class Name** under each date.
+    *   **Information per Item:** Show Class Name and the relevant Assignment/Reading details (as structured by Claude).
+*   **Update:** The list should refresh automatically when the page loads. Provide a visible "Refresh Homework" button for manual triggering.
+
+### 5.4. PDF Summarization & Google Drive Upload:
+*   **Input:** User uploads one or more PDF files using a file input button and/or drag-and-drop interface.
+*   **Process:**
+    1.  For each uploaded PDF:
+        *   Process the PDF content (extract text).
+        *   Send the extracted text to **Gemini 2.5 Pro** using a specific summarization prompt (Use a placeholder like `Summarize this academic text:` - the final prompt will be provided later).
+        *   Receive the summary text from Gemini.
+    2.  Prepare data for Zapier: Summary text, and desired filename components. *Agent Note: The user wants the Google Doc named "[Class Name] - [Date] based on the readings". Determine how to capture the relevant Class Name/Date context for the uploaded PDF (e.g., ask the user upon upload, infer from filename if possible, or use current date). For now, aim for a functional default like `"[Input PDF Filename] Summary - [Date Processed]"`, but structure code to allow easy modification of naming logic.*
+    3.  Trigger the user-configured **Zapier MCP Tool for Google Drive**. Pass the summary text and filename components to the tool. The Zapier tool handles the actual Google Doc creation in the user's specified Drive folder.
+*   **Output:** A summarized Google Document created in the user's Google Drive via the Zapier MCP tool for each uploaded PDF. Provide feedback to the user on the webpage (e.g., "Summarization complete, check Google Drive").
+*   **Error Handling:** Report errors during PDF processing, Gemini API calls, or Zapier MCP trigger failures to the user.
+
+### 5.5. Error Handling (General):
+*   Implement standard error handling for API calls (LLMs, Zapier) and backend operations.
+*   Log errors server-side for debugging.
+*   Display user-friendly error messages on the frontend without exposing sensitive details. 
