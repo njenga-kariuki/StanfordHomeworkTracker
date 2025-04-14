@@ -1,9 +1,11 @@
+import puppeteer from 'puppeteer';
 import { log } from '../vite';
 
 // Types for Canvas interactions
 type CanvasSession = {
   username: string;
   password: string;
+  isEnvironmentAuth: boolean;
 };
 
 type CanvasLoginResult = {
