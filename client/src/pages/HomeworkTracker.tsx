@@ -24,6 +24,43 @@ export default function HomeworkTracker() {
 
   const [loginLoading, setLoginLoading] = useState(false);
   const [loginError, setLoginError] = useState('');
+  const [autoLoginAttempted, setAutoLoginAttempted] = useState(false);
+
+  // Try to login with environment variables when component mounts
+  useEffect(() => {
+    const attemptAutoLogin = async () => {
+      if (isError && !autoLoginAttempted) {
+        setLoginLoading(true);
+        setAutoLoginAttempted(true);
+        
+        try {
+          // Call login API without credentials - it will try to use environment variables
+          const response = await fetch('/api/auth/canvas', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({})
+          });
+          
+          if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.message || 'Auto-login failed');
+          }
+          
+          // If we get here, environment variable login was successful
+          // Refresh the data
+          scanHomework();
+        } catch (error) {
+          // Auto-login failed, but we don't show an error message initially
+          // as this would confuse the user who may not know about the env vars
+          console.log('Auto-login not available or failed:', error);
+        } finally {
+          setLoginLoading(false);
+        }
+      }
+    };
+    
+    attemptAutoLogin();
+  }, [isError, autoLoginAttempted, scanHomework]);
 
   // Handle login form submission
   const handleLogin = async (e: React.FormEvent) => {
@@ -86,6 +123,12 @@ export default function HomeworkTracker() {
           
           <p className="text-sm text-gray-600 mb-4">
             Please sign in with your Stanford Canvas credentials to access your homework assignments.
+            {autoLoginAttempted && (
+              <span className="block mt-2 text-xs italic">
+                Note: We attempted to use your stored credentials from environment variables but it didn't work.
+                You'll need to enter your credentials manually this time.
+              </span>
+            )}
           </p>
           
           <form onSubmit={handleLogin} className="space-y-4">

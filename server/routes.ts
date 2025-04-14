@@ -32,10 +32,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ---------------------------
   app.post('/api/auth/canvas', async (req: Request, res: Response) => {
     try {
+      // Check if credentials are provided in the request body or use environment variables
+      let username, password;
+      
+      if (req.body && req.body.username && req.body.password) {
+        // User submitted credentials through form
+        username = req.body.username;
+        password = req.body.password;
+      } else {
+        // Use environment variables if available
+        username = process.env.CANVAS_USERNAME;
+        password = process.env.CANVAS_PASSWORD;
+        
+        // Ensure environment variables are available
+        if (!username || !password) {
+          return res.status(400).json({ 
+            message: 'No credentials provided and environment variables not set'
+          });
+        }
+      }
+      
       const credentials = z.object({
         username: z.string(),
         password: z.string()
-      }).parse(req.body);
+      }).parse({ username, password });
       
       // Try to log in to Canvas
       const canvasSession = await canvasService.login(credentials.username, credentials.password);
