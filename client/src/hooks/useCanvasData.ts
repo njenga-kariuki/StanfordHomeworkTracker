@@ -31,9 +31,12 @@ export function useCanvasData() {
   const { 
     data: homeworkData, 
     isLoading: loadingHomework,
-    refetch: refetchHomework
+    refetch: refetchHomework,
+    isError: homeworkError
   } = useQuery<AssignmentsByDateResponse>({
     queryKey: ['/api/canvas/homework'],
+    retry: false, // Don't keep retrying if unauthorized
+    refetchOnWindowFocus: false, // Don't refetch on window focus to avoid constant 401s
   });
   
   // Update courses (enable/disable)
@@ -138,6 +141,7 @@ export function useCanvasData() {
     dateGroups: formattedData,
     lastUpdated,
     isLoading: loadingCourses || loadingHomework,
+    isError: homeworkError,
     isUpdating: updatingCourses,
     isScanning: scanning,
     updateCourses,

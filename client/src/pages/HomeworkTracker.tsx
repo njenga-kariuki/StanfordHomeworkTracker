@@ -1,5 +1,7 @@
 import { useCanvasData } from "@/hooks/useCanvasData";
 import { useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Link } from "wouter";
 
 export default function HomeworkTracker() {
   const {
@@ -7,18 +9,54 @@ export default function HomeworkTracker() {
     dateGroups,
     lastUpdated,
     isLoading,
+    isError,
     isScanning,
     scanHomework
   } = useCanvasData();
   
   const [selectedCourse, setSelectedCourse] = useState<string>("all");
 
-  // Initial scan if no data
-  useEffect(() => {
-    if (!dateGroups || dateGroups.length === 0) {
+  // Canvas login credentials
+  const [canvasCredentials, setCanvasCredentials] = useState({
+    username: '',
+    password: ''
+  });
+
+  const [loginLoading, setLoginLoading] = useState(false);
+  const [loginError, setLoginError] = useState('');
+
+  // Handle login form submission
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoginLoading(true);
+    setLoginError('');
+    
+    try {
+      const response = await fetch('/api/auth/canvas', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(canvasCredentials)
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to authenticate with Canvas');
+      }
+      
+      // On successful login, scan for homework
       scanHomework();
+    } catch (error) {
+      setLoginError(error instanceof Error ? error.message : 'Authentication failed');
+    } finally {
+      setLoginLoading(false);
     }
-  }, [dateGroups, scanHomework]);
+  };
+
+  // Handle input changes
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setCanvasCredentials(prev => ({ ...prev, [name]: value }));
+  };
 
   // Filter assignments by selected course
   const filteredDateGroups = selectedCourse === "all"
@@ -32,63 +70,138 @@ export default function HomeworkTracker() {
 
   return (
     <div>
-      {/* Status Card */}
-      <div className="card bg-white rounded-lg shadow p-4 mb-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-lg font-medium">Weekly Homework Status</h2>
-            <p className="text-sm text-gray-600">
-              Last updated: <span>{lastUpdated || "Never"}</span>
-            </p>
+      {/* Show Canvas Login Form if not authenticated */}
+      {isError && (
+        <div className="bg-white rounded-lg shadow p-6 mb-6">
+          <div className="flex items-center mb-4">
+            <span className="material-icons text-[#F44336] mr-2">error_outline</span>
+            <h2 className="text-lg font-medium">Canvas Authentication Required</h2>
           </div>
-          <div className="flex items-center">
-            <span
-              className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-[#4CAF50] bg-opacity-10 text-[#4CAF50]"
-            >
-              <span className="w-2 h-2 rounded-full bg-[#4CAF50] mr-1.5"></span>
-              Connected to Canvas
-            </span>
-            <button
-              onClick={() => scanHomework()}
-              disabled={isScanning}
-              className="ml-4 bg-[#8C1515] text-white px-4 py-2 rounded text-sm font-medium hover:bg-[#B83A4B] transition-colors flex items-center shadow-sm disabled:opacity-50"
-            >
-              <span className="material-icons text-sm mr-1.5">
-                {isScanning ? "hourglass_empty" : "sync"}
+          
+          {loginError && (
+            <div className="mb-4 p-3 bg-[#F44336] bg-opacity-10 text-[#F44336] rounded">
+              <p className="text-sm">{loginError}</p>
+            </div>
+          )}
+          
+          <p className="text-sm text-gray-600 mb-4">
+            Please sign in with your Stanford Canvas credentials to access your homework assignments.
+          </p>
+          
+          <form onSubmit={handleLogin} className="space-y-4">
+            <div>
+              <label htmlFor="canvas-username" className="block text-sm font-medium text-gray-700 mb-1">
+                Canvas Username
+              </label>
+              <input
+                id="canvas-username"
+                name="username"
+                type="text"
+                required
+                value={canvasCredentials.username}
+                onChange={handleInputChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-[#8C1515] focus:border-[#8C1515]"
+                placeholder="Stanford Username"
+              />
+            </div>
+            
+            <div>
+              <label htmlFor="canvas-password" className="block text-sm font-medium text-gray-700 mb-1">
+                Canvas Password
+              </label>
+              <input
+                id="canvas-password"
+                name="password"
+                type="password"
+                required
+                value={canvasCredentials.password}
+                onChange={handleInputChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-[#8C1515] focus:border-[#8C1515]"
+                placeholder="Stanford Password"
+              />
+            </div>
+            
+            <div>
+              <button
+                type="submit"
+                disabled={loginLoading}
+                className="w-full bg-[#8C1515] text-white py-2 px-4 rounded-md shadow-sm text-sm font-medium hover:bg-[#B83A4B] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#8C1515] disabled:opacity-50 flex items-center justify-center"
+              >
+                {loginLoading ? (
+                  <>
+                    <span className="animate-spin h-4 w-4 mr-2 border-2 border-white border-t-transparent rounded-full"></span>
+                    Connecting...
+                  </>
+                ) : (
+                  "Connect to Canvas"
+                )}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+      
+      {/* Status Card (only show when authenticated) */}
+      {!isError && (
+        <div className="card bg-white rounded-lg shadow p-4 mb-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-lg font-medium">Weekly Homework Status</h2>
+              <p className="text-sm text-gray-600">
+                Last updated: <span>{lastUpdated || "Never"}</span>
+              </p>
+            </div>
+            <div className="flex items-center">
+              <span
+                className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-[#4CAF50] bg-opacity-10 text-[#4CAF50]"
+              >
+                <span className="w-2 h-2 rounded-full bg-[#4CAF50] mr-1.5"></span>
+                Connected to Canvas
               </span>
-              {isScanning ? "Scanning..." : "Scan Now"}
-            </button>
+              <button
+                onClick={() => scanHomework()}
+                disabled={isScanning}
+                className="ml-4 bg-[#8C1515] text-white px-4 py-2 rounded text-sm font-medium hover:bg-[#B83A4B] transition-colors flex items-center shadow-sm disabled:opacity-50"
+              >
+                <span className="material-icons text-sm mr-1.5">
+                  {isScanning ? "hourglass_empty" : "sync"}
+                </span>
+                {isScanning ? "Scanning..." : "Scan Now"}
+              </button>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
-      {/* Course Filter */}
-      <div className="mb-6 flex flex-wrap gap-2">
-        <button
-          onClick={() => setSelectedCourse("all")}
-          className={`px-3 py-1.5 rounded-full text-sm font-medium ${
-            selectedCourse === "all"
-              ? "bg-[#8C1515] text-white"
-              : "bg-white text-neutral-text hover:bg-gray-100"
-          } transition-colors`}
-        >
-          All Courses
-        </button>
-        
-        {courses?.map(course => (
+      {/* Course Filter - Only show when not in error state */}
+      {!isError && (
+        <div className="mb-6 flex flex-wrap gap-2">
           <button
-            key={course.id}
-            onClick={() => setSelectedCourse(course.name)}
+            onClick={() => setSelectedCourse("all")}
             className={`px-3 py-1.5 rounded-full text-sm font-medium ${
-              selectedCourse === course.name
+              selectedCourse === "all"
                 ? "bg-[#8C1515] text-white"
                 : "bg-white text-neutral-text hover:bg-gray-100"
             } transition-colors`}
           >
-            {course.name}
+            All Courses
           </button>
-        ))}
-      </div>
+          
+          {courses?.map(course => (
+            <button
+              key={course.id}
+              onClick={() => setSelectedCourse(course.name)}
+              className={`px-3 py-1.5 rounded-full text-sm font-medium ${
+                selectedCourse === course.name
+                  ? "bg-[#8C1515] text-white"
+                  : "bg-white text-neutral-text hover:bg-gray-100"
+              } transition-colors`}
+            >
+              {course.name}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Loading State */}
       {isLoading && (
@@ -98,8 +211,8 @@ export default function HomeworkTracker() {
         </div>
       )}
 
-      {/* Assignments By Date */}
-      {!isLoading && filteredDateGroups.length === 0 && (
+      {/* Assignments By Date - Empty State - Only show when authenticated */}
+      {!isError && !isLoading && filteredDateGroups.length === 0 && (
         <div id="empty-state" className="rounded-lg border-2 border-dashed border-gray-300 p-12 text-center">
           <div className="mx-auto h-12 w-12 text-gray-400">
             <span className="material-icons text-4xl">assignment</span>
@@ -122,7 +235,8 @@ export default function HomeworkTracker() {
         </div>
       )}
 
-      {!isLoading && filteredDateGroups.map(dateGroup => (
+      {/* Display assignments by date - Only when authenticated */}
+      {!isError && !isLoading && filteredDateGroups.map(dateGroup => (
         <div className="mb-8" key={dateGroup.date}>
           <div className="flex items-center mb-4">
             <h2 className="text-lg font-medium">
