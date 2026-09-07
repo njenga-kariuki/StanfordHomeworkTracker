@@ -1,4 +1,5 @@
 import type { Express, Request, Response } from "express";
+import { randomBytes } from "crypto";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import bodyParser from "body-parser";
@@ -15,7 +16,7 @@ const MemoryStore = createMemoryStore(session);
 export async function registerRoutes(app: Express): Promise<Server> {
   // Configure sessions
   app.use(session({
-    secret: process.env.SESSION_SECRET || 'REDACTED_SESSION_SECRET',
+    secret: process.env.SESSION_SECRET || randomBytes(32).toString('hex'),
     resave: false,
     saveUninitialized: false,
     cookie: { secure: false, maxAge: 7 * 24 * 60 * 60 * 1000 }, // 7 days

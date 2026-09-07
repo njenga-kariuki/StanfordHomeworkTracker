@@ -1,133 +1,29 @@
 # Stanford GSB Homework Tracker
 
-A web application that automates tracking and summarizing Stanford GSB homework assignments by integrating with Canvas LMS and using AI for content processing.
+A 2025 academic workflow prototype built by Njenga Kariuki: bring course tasks into a weekly view, organize them with an LLM, and send reading summaries into a document workflow.
 
-## Overview
+## Implementation
 
-The Stanford GSB Homework Tracker simplifies the academic workflow for GSB students by:
+The React and TypeScript interface includes course selection, assignment grouping, settings and a PDF upload flow. An Express backend connects the interface to separate Canvas, language-model and Zapier service modules, with session handling and in-memory storage.
 
-1. Securely connecting to Canvas to extract homework assignments and readings
-2. Processing and organizing assignments into a clear weekly view
-3. Providing AI-powered summarization for PDF readings
-4. Automating the creation of Google Docs for notes and summaries
+The source contains real Anthropic and Google Generative AI API calls and a configurable Zapier webhook request. It also makes the unfinished integration boundaries explicit:
 
-This application helps students save time, stay organized, and better prepare for classes by automating tedious administrative tasks.
+- **Canvas:** login and course/assignment retrieval use a local mock service and sample assignments; this version does not scrape or authenticate with Stanford Canvas.
+- **PDFs:** the upload interface is implemented, but the text-extraction function returns placeholder content before the summarization call.
+- **Google Docs:** the webhook adapter is implemented; a configured Zapier workflow is needed to create a document.
 
-## Key Features
+These boundaries reflect where the prototype stopped in April 2025. The code is preserved as a record of the workflow and service orchestration work.
 
-### Canvas Integration
-- Secure Canvas login and session management
-- Automated homework and reading extraction from specified Canvas courses
-- Intelligent grouping of assignments by date and course
+## Local exploration
 
-### AI-Powered Content Processing
-- Canvas content is processed using Claude 3.7 Sonnet for clarity and structure
-- PDF summarization using Google's Gemini 2.5 Pro model
-- Intelligent extraction of key concepts and themes from academic papers
+Use Node.js and npm, run `npm ci`, then `npm run dev`. Start with dummy Canvas credentials and the included sample assignments; do not enter a real university password into the mock login.
 
-### Weekly Task Organization
-- Aggregated to-do list display showing all assignments
-- Assignments grouped by date with clear status indicators
-- Visual distinction between readings and other assignment types
+For the LLM and webhook paths, provide your own environment variables through your shell or hosting environment. `.env.example` lists the configuration. The historical model identifiers may require updates before those calls can run. API calls can incur charges.
 
-### PDF Summarization & Google Drive Integration
-- Easy PDF upload interface with drag-and-drop support
-- Automatic AI summarization of academic papers and readings
-- Summaries are formatted and saved as Google Docs via Zapier
-- Consistent naming convention for organized note-taking
+`npm run build` builds the client and server; `npm run check` runs TypeScript checking. The original design brief remains in [PROJECT.md](PROJECT.md) as the intended scope, which extends beyond the implemented prototype.
 
-## Technical Architecture
+## Scope
 
-The application is built using a modern tech stack:
+This is a personal prototype with in-memory storage and demonstration authentication. It is not an official Stanford application or a service for handling real student accounts. No private course readings, student records or live credentials are included.
 
-### Frontend
-- React-based single-page application with responsive design
-- UI components from ShadCN UI and Tailwind CSS
-- Client-side state management with React Query
-
-### Backend
-- Node.js/Express server for API endpoints and service orchestration
-- In-memory storage for development (PostgreSQL planned for production)
-- API integrations with AI services (Anthropic Claude, Google Gemini)
-- Zapier webhook integration for Google Docs creation
-
-### AI Services
-- **Claude 3.7 Sonnet**: Used for processing Canvas content to create structured summaries
-- **Gemini 2.5 Pro**: Specialized for academic PDF summarization
-
-### External Integrations
-- **Canvas LMS**: Source for course materials and assignments
-- **Zapier MCP**: Creates Google Docs from AI-generated summaries
-- **Google Drive**: Storage for summarized documents and notes
-
-## Getting Started
-
-### Prerequisites
-- Node.js 18 or higher
-- Environment variables for API keys:
-  - `ANTHROPIC_API_KEY`: For Claude 3.7 API access
-  - `GOOGLE_AI_API_KEY`: For Gemini 2.5 Pro API access
-  - `ZAPIER_MCP_WEBHOOK_URL`: For Google Drive integration
-  - (Optional) `CANVAS_USERNAME` and `CANVAS_PASSWORD`: For automated Canvas login
-
-### Installation
-
-1. Clone the repository
-2. Install dependencies:
-   ```
-   npm install
-   ```
-3. Create a `.env` file with required API keys
-4. Start the development server:
-   ```
-   npm run dev
-   ```
-
-### Configuration
-
-The application allows customization of:
-- Google Drive folder path for summaries
-- File naming convention for generated documents
-- Canvas course selection and filtering
-
-## Development Roadmap
-
-### V1 (Current)
-- Canvas authentication and homework extraction
-- AI processing of Canvas content
-- PDF summarization with Gemini
-- Google Docs creation via Zapier
-
-### V2 (Planned)
-- PostgreSQL database implementation
-- Support for multiple Canvas instances/accounts
-- Analytics dashboard showing homework completion metrics
-- Collaborative features for study groups
-
-### V3 (Future)
-- Mobile app version
-- Calendar integration
-- Advanced AI tutoring based on course materials
-- Lecture recording transcription and summarization
-
-## Security Notes
-
-This application prioritizes security:
-- Canvas credentials can be stored as environment variables
-- No credentials are exposed in frontend code
-- All API keys are handled server-side only
-- Session management follows security best practices
-
-## Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
-
-## License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
-
-## Acknowledgments
-
-- Stanford GSB for the inspiration
-- Anthropic (Claude) and Google (Gemini) for AI capabilities
-- Zapier for workflow automation
+The package metadata specifies MIT. Stanford GSB provided the academic context; Anthropic, Google and Zapier provide the external services used by the integration code.
